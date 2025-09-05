@@ -262,14 +262,10 @@ with left:
             default=[r.name for r in rules_all],
         )
 
-        # 계좌 window는 50 고정, 체크만 제공
-        use_account = st.checkbox("계좌(키워드 근접) 포함 (window=50 고정)", value=True)
-
-        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
-
-        submitted = st.form_submit_button("🚀 실행")
 
 with right:
+    mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+    submitted = st.form_submit_button("🚀 실행")
     st.subheader("② 결과")
     if not submitted:
         st.info("왼쪽에서 텍스트와 옵션을 설정한 뒤 **실행** 버튼을 누르세요.")
@@ -325,7 +321,6 @@ with right:
                     mime="text/plain",
                 )
 
-st.caption("※ 카드번호는 룬(Luhn) 검증 통과 시에만 대체. 법인등록번호는 주민번호처럼 보이는 패턴은 제외. 연구과제번호: 202X000NN[A-Z]. 계좌 window=50 고정.")
 
 
 # ==================================
@@ -562,4 +557,5 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
