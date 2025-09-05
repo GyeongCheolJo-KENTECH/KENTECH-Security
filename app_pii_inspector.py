@@ -49,10 +49,6 @@ def looks_like_rrn_ymd(num13: str) -> bool:
 # ---------- 패턴들 ----------
 # 휴대폰
 PAT_MOBILE = re.compile(r"\b(01[016789])[-\s]?\d{3,4}[-\s]?\d{4}\b")
-# 유선(서울)
-PAT_LAND_SEOUL = re.compile(r"\b(02)[-\s]?\d{3,4}[-\s]?\d{4}\b")
-# 유선(지방)
-PAT_LAND_OTHERS = re.compile(r"\b(0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4]))[-\s]?\d{3,4}[-\s]?\d{4}\b")
 # 주민등록번호(형식)
 PAT_RRN = re.compile(r"\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-]?\d{7}\b")
 # 이메일
@@ -87,11 +83,6 @@ class Rule:
 def mask_mobile(m: re.Match) -> str:
     tail2 = re.sub(r"\D", "", m.group(0))[-2:]
     return f"TEL[***-****-**{tail2}]"
-
-def mask_landline(m: re.Match) -> str:
-    area = m.group(1)
-    tail2 = re.sub(r"\D", "", m.group(0))[-2:]
-    return f"TEL[{area}-***-**{tail2}]"
 
 def mask_rrn(m: re.Match) -> str:
     raw = m.group(0)
@@ -130,17 +121,15 @@ def mask_project(m: re.Match) -> str:
 
 def default_rules() -> List[Rule]:
     return [
-        Rule("휴대폰(모바일)", PAT_MOBILE, mask_fn=mask_mobile, color="#c8e6c9"),
-        Rule("유선(서울 02)", PAT_LAND_SEOUL, mask_fn=mask_landline, color="#d0f0fd"),
-        Rule("유선(지방 0xx)", PAT_LAND_OTHERS, mask_fn=mask_landline, color="#e6f7ff"),
+        Rule("전화번호", PAT_MOBILE, mask_fn=mask_mobile, color="#c8e6c9"),
         Rule("주민등록번호", PAT_RRN, mask_fn=mask_rrn, color="#ffecb3"),
         Rule("이메일", PAT_EMAIL, mask_fn=mask_email, color="#bbdefb"),
-        Rule("카드번호(룬검증)", PAT_CARD, mask_fn=mask_card, validator=lambda m: luhn_check(m.group(0)), color="#ffcdd2"),
+        Rule("카드번호", PAT_CARD, mask_fn=mask_card, validator=lambda m: luhn_check(m.group(0)), color="#ffcdd2"),
         Rule("여권", PAT_PASSPORT, mask_fn=mask_passport, color="#e1bee7"),
         Rule("운전면허", PAT_DRIVER, mask_fn=mask_driver, color="#d7ccc8"),
-        Rule("사업자등록번호(BRN)", PAT_BRN, mask_fn=mask_brn, validator=lambda m: brn_check(m.group(0)), color="#fff0b3"),
-        Rule("법인등록번호(CRN)", PAT_CRN, mask_fn=mask_crn, validator=lambda m: not looks_like_rrn_ymd(m.group(0)), color="#e0f7fa"),
-        Rule("연구과제번호(ProjectID)", PAT_PROJECT, mask_fn=mask_project, color="#f0b3ff"),
+        Rule("사업자등록번호", PAT_BRN, mask_fn=mask_brn, validator=lambda m: brn_check(m.group(0)), color="#fff0b3"),
+        Rule("법인등록번호", PAT_CRN, mask_fn=mask_crn, validator=lambda m: not looks_like_rrn_ymd(m.group(0)), color="#e0f7fa"),
+        Rule("연구과제번호", PAT_PROJECT, mask_fn=mask_project, color="#f0b3ff"),
     ]
 
 # ---------- 검출/표기 ----------
@@ -368,8 +357,6 @@ if False:
 
     PAT = {
         "mobile_phone": re.compile(r"\b(01[016789])[-\s]?\d{3,4}[-\s]?\d{4}\b"),
-        "landline_seoul": re.compile(r"\b(02)[-\s]?\d{3,4}[-\s]?\d{4}\b"),
-        "landline_others": re.compile(r"\b(0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4]))[-\s]?\d{3,4}[-\s]?\d{4}\b"),
         "rrn": re.compile(r"\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-]?\d{7}\b"),
         "email": re.compile(r"\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b"),
         "card": re.compile(r"\b(?:\d[ -]?){13,19}\b"),
@@ -386,8 +373,6 @@ if False:
 
     RULES = [
         Rule("mobile_phone", PAT["mobile_phone"]),
-        Rule("landline_seoul", PAT["landline_seoul"]),
-        Rule("landline_others", PAT["landline_others"]),
         Rule("rrn", PAT["rrn"]),
         Rule("email", PAT["email"]),
         Rule("card", PAT["card"], validate=lambda m: luhn_check(m.group(0))),
@@ -478,8 +463,6 @@ if False:
 
     # 패턴
     PAT_MOBILE = re.compile(r"\b(01[016789])[-\s]?\d{3,4}[-\s]?\d{4}\b")
-    PAT_LAND_SEOUL = re.compile(r"\b(02)[-\s]?\d{3,4}[-\s]?\d{4}\b")
-    PAT_LAND_OTHERS = re.compile(r"\b(0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4]))[-\s]?\d{3,4}[-\s]?\d{4}\b")
     PAT_RRN = re.compile(r"\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-]?\d{7}\b")
     PAT_EMAIL = re.compile(r"\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b")
     PAT_CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
@@ -496,9 +479,6 @@ if False:
     def mask_mobile(m: re.Match) -> str:
         tail2 = re.sub(r"\D", "", m.group(0))[-2:]
         return f"TEL[***-****-**{tail2}]"
-    def mask_landline(m: re.Match) -> str:
-        area = m.group(1); tail2 = re.sub(r"\D", "", m.group(0))[-2:]
-        return f"TEL[{area}-***-**{tail2}]"
     def mask_rrn(m: re.Match) -> str:
         return f"RRN[******-***{m.group(0)[-4:]}]"
     def mask_email(m: re.Match) -> str:
@@ -522,8 +502,6 @@ if False:
 
     RULES = [
         (PAT_MOBILE,  mask_mobile,  None),
-        (PAT_LAND_SEOUL, mask_landline, None),
-        (PAT_LAND_OTHERS, mask_landline, None),
         (PAT_RRN,     mask_rrn,     None),
         (PAT_EMAIL,   mask_email,   None),
         (PAT_CARD,    mask_card,    lambda m: luhn_check(m.group(0))),
@@ -567,6 +545,7 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
 
 
