@@ -248,8 +248,6 @@ with left:
         default=[r.name for r in rules_all],
     )
 
-    # 계좌는 키워드 근접 시만 처리, window=50 고정
-    use_account = st.checkbox("계좌(키워드 근접) 포함 (window=50 고정)", value=True)
 
 with right:
     st.subheader("② 결과")
@@ -257,9 +255,10 @@ with right:
     # 오른쪽 상단 컨트롤 (출력 모드 + 실행 버튼)
     ctrl_col1, ctrl_col2 = st.columns([3, 1])
     with ctrl_col1:
-        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
-    with ctrl_col2:
         run = st.button("🚀 실행", use_container_width=True)
+    with ctrl_col2:
+        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+
 
     st.divider()
 
@@ -545,6 +544,7 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
 
 
