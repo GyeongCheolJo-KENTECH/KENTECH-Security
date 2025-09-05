@@ -264,6 +264,7 @@ with left:
 
 
 with right:
+    st.subheader()
     mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
     submitted = st.form_submit_button("🚀 실행")
     st.subheader("② 결과")
@@ -557,5 +558,6 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
 
