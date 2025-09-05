@@ -240,57 +240,92 @@ st.title("🔒 민감정보 검출 · 표기(하이라이트) · 대체(마스�
 left, right = st.columns([1, 1], gap="large")
 
 with left:
-    st.subheader("① 입력(왼쪽)")
-    base_text = st.text_area(
-        "여기에 텍스트를 붙여넣으세요",
-        key="user_text",
-        height=360,
-        placeholder=(
-            "예) 010-1234-5678, 02-345-6789, 031-234-5678, name@example.com,\n"
-            "220-81-62517(사업자), 110111-1234567(법인), 202300012A(과제)"
-        ),
-    )
-
-    st.divider()
-    st.subheader("② 민감정보 설정")
+    st.subheader("① 입력 & 옵션")
     rules_all = default_rules()
-    enabled_names = st.multiselect(
-        "적용할 규칙 선택",
-        [r.name for r in rules_all],
-        default=[r.name for r in rules_all],
-    )
-    rules = [r for r in rules_all if r.name in enabled_names]
 
-    use_account = st.checkbox("계좌(키워드 근접) 포함", value=True)
-    acct_window = st.slider("계좌 키워드 뒤 검색 범위(문자 수)", min_value=20, max_value=200, value=50, step=5)
+    # 실행 버튼을 눌러야만 처리되도록 폼 사용
+    with st.form("pii_form"):
+        base_text = st.text_area(
+            "여기에 텍스트를 붙여넣으세요",
+            key="user_text",
+            height=360,
+            placeholder=(
+                "예) 010-1234-5678, 02-345-6789, name@example.com\n"
+                "220-81-62517(사업자), 110111-1234567(법인), 202300012A(과제)"
+            ),
+        )
 
-    mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+        # 멀티셀렉트(지방 유선은 rules에서 제거되어 자동으로 안 뜹니다)
+        enabled_names = st.multiselect(
+            "적용할 규칙 선택",
+            [r.name for r in rules_all],
+            default=[r.name for r in rules_all],
+        )
+
+        # 계좌 window는 50 고정, 체크만 제공
+        use_account = st.checkbox("계좌(키워드 근접) 포함 (window=50 고정)", value=True)
+
+        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+
+        submitted = st.form_submit_button("🚀 실행")
 
 with right:
-    st.subheader("③ 결과(오른쪽)")
-    if not base_text.strip():
-        st.info("왼쪽에 텍스트를 입력하세요.")
+    st.subheader("② 결과")
+    if not submitted:
+        st.info("왼쪽에서 텍스트와 옵션을 설정한 뒤 **실행** 버튼을 누르세요.")
     else:
-        spans = find_spans(base_text, rules, use_account_near_keyword=use_account, account_window=acct_window)
-        if spans:
-            counts = {}
-            for sp in spans:
-                counts[sp.rname] = counts.get(sp.rname, 0) + 1
-            st.write("**검출 요약**")
-            st.write(", ".join([f"{k}: {v}건" for k, v in counts.items()]))
+        if not base_text.strip():
+            st.warning("텍스트를 입력하세요.")
         else:
-            st.write("검출된 항목 없음")
+            rules = [r for r in rules_all if r.name in enabled_names]
 
-        if mode == "표기(하이라이트)":
-            html = annotate_html(base_text, spans, rules)
-            st.markdown(f"<div style='white-space:pre-wrap; font-family:ui-monospace, Menlo, Consolas, monospace; line-height:1.6;'>{html}</div>", unsafe_allow_html=True)
-            st.download_button("현재 결과(하이라이트 HTML) 다운로드", html, file_name="annotated.html", mime="text/html")
-        else:
-            redacted = replace_text(base_text, rules, use_account_near_keyword=use_account, account_window=acct_window)
-            st.text_area("마스킹 결과", value=redacted, height=360)
-            st.download_button("마스킹 결과 TXT 다운로드", redacted, file_name="sanitized.txt", mime="text/plain")
+            # window=50 고정 적용
+            spans = find_spans(
+                base_text,
+                rules,
+                use_account_near_keyword=use_account,
+                account_window=50,
+            )
 
-st.caption("※ 카드번호는 룬(Luhn) 검증 통과 시에만 대체. 법인등록번호는 주민번호처럼 보이는 패턴은 제외. 연구과제번호: 202X000NN[A-Z].")
+            if spans:
+                counts = {}
+                for sp in spans:
+                    counts[sp.rname] = counts.get(sp.rname, 0) + 1
+                st.write("**검출 요약**")
+                st.write(", ".join([f"{k}: {v}건" for k, v in counts.items()]))
+            else:
+                st.write("검출된 항목 없음")
+
+            if mode == "표기(하이라이트)":
+                html = annotate_html(base_text, spans, rules)
+                st.markdown(
+                    "<div style='white-space:pre-wrap; font-family:ui-monospace, Menlo, Consolas, monospace; line-height:1.6;'>"
+                    + html +
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+                st.download_button(
+                    "현재 결과(하이라이트 HTML) 다운로드",
+                    html,
+                    file_name="annotated.html",
+                    mime="text/html",
+                )
+            else:
+                redacted = replace_text(
+                    base_text,
+                    rules,
+                    use_account_near_keyword=use_account,
+                    account_window=50,  # window 고정
+                )
+                st.text_area("마스킹 결과", value=redacted, height=360)
+                st.download_button(
+                    "마스킹 결과 TXT 다운로드",
+                    redacted,
+                    file_name="sanitized.txt",
+                    mime="text/plain",
+                )
+
+st.caption("※ 카드번호는 룬(Luhn) 검증 통과 시에만 대체. 법인등록번호는 주민번호처럼 보이는 패턴은 제외. 연구과제번호: 202X000NN[A-Z]. 계좌 window=50 고정.")
 
 
 # ==================================
@@ -527,3 +562,4 @@ if False:
 
     if __name__ == "__main__":
         main()
+
