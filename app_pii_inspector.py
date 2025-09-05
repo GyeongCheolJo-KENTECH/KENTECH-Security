@@ -259,7 +259,6 @@ with left:
         default=[r.name for r in rules_all],
     )
 
-    use_account = st.checkbox("계좌(키워드 근접) 포함 (window=50 고정)", value=True)
 
 with right:
     st.subheader("② 결과")
@@ -279,7 +278,7 @@ with right:
             spans = find_spans(
                 base_text,
                 rules,
-                use_account_near_keyword=use_account,
+                use_account_near_keyword=true,
                 account_window=50,  # 고정
             )
 
@@ -310,7 +309,7 @@ with right:
                 redacted = replace_text(
                     base_text,
                     rules,
-                    use_account_near_keyword=use_account,
+                    use_account_near_keyword=true,
                     account_window=50,
                 )
                 st.text_area("마스킹 결과", value=redacted, height=360)
@@ -556,3 +555,4 @@ if False:
 
     if __name__ == "__main__":
         main()
+
