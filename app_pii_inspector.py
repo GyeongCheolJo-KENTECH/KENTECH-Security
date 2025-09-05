@@ -237,42 +237,50 @@ def replace_text(text: str, rules: List[Rule], use_account_near_keyword: bool = 
 # ---------- UI ----------
 st.set_page_config(page_title="민감정보 표기·대체 도구", layout="wide")
 st.title("🔒 민감정보 검출 · 표기(하이라이트) · 대체(마스킹)")
+
 left, right = st.columns([1, 1], gap="large")
 
 with left:
     st.subheader("① 입력 & 옵션")
     rules_all = default_rules()
 
-    # 실행 버튼을 눌러야만 처리되도록 폼 사용
-    with st.form("pii_form"):
-        base_text = st.text_area(
-            "여기에 텍스트를 붙여넣으세요",
-            key="user_text",
-            height=360,
-            placeholder=(
-                "예) 010-1234-5678, 02-345-6789, name@example.com\n"
-                "220-81-62517(사업자), 110111-1234567(법인), 202300012A(과제)"
-            ),
-        )
+    base_text = st.text_area(
+        "여기에 텍스트를 붙여넣으세요",
+        key="user_text",
+        height=360,
+        placeholder="""예) 010-1234-5678, 02-345-6789, name@example.com
+220-81-62517(사업자), 110111-1234567(법인), 202300012A(과제)""",
+    )
 
-        # 멀티셀렉트(지방 유선은 rules에서 제거되어 자동으로 안 뜹니다)
-        enabled_names = st.multiselect(
-            "적용할 규칙 선택",
-            [r.name for r in rules_all],
-            default=[r.name for r in rules_all],
-        )
+    # 멀티셀렉트 (지방 유선 규칙은 default_rules()에서 제거되어 목록에 없음)
+    enabled_names = st.multiselect(
+        "적용할 규칙 선택",
+        [r.name for r in rules_all],
+        default=[r.name for r in rules_all],
+    )
 
+    # 계좌는 키워드 근접 시만 처리, window=50 고정
+    use_account = st.checkbox("계좌(키워드 근접) 포함 (window=50 고정)", value=True)
 
 with right:
     st.subheader("② 결과")
-    mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
-    run = st.button("🚀 실행")
-    if not submitted:
-        st.info("왼쪽에서 텍스트와 옵션을 설정한 뒤 **실행** 버튼을 누르세요.")
+
+    # 오른쪽 상단 컨트롤 (출력 모드 + 실행 버튼)
+    ctrl_col1, ctrl_col2 = st.columns([3, 1])
+    with ctrl_col1:
+        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+    with ctrl_col2:
+        run = st.button("🚀 실행", use_container_width=True)
+
+    st.divider()
+
+    if not run:
+        st.info("왼쪽에서 텍스트를 입력하고 **실행** 버튼을 누르세요.")
     else:
         if not base_text.strip():
             st.warning("텍스트를 입력하세요.")
         else:
+            # 선택한 규칙만 적용
             rules = [r for r in rules_all if r.name in enabled_names]
 
             # window=50 고정 적용
@@ -283,6 +291,7 @@ with right:
                 account_window=50,
             )
 
+            # 검출 요약
             if spans:
                 counts = {}
                 for sp in spans:
@@ -292,6 +301,7 @@ with right:
             else:
                 st.write("검출된 항목 없음")
 
+            # 결과 출력
             if mode == "표기(하이라이트)":
                 html = annotate_html(base_text, spans, rules)
                 st.markdown(
@@ -305,13 +315,14 @@ with right:
                     html,
                     file_name="annotated.html",
                     mime="text/html",
+                    use_container_width=True,
                 )
             else:
                 redacted = replace_text(
                     base_text,
                     rules,
                     use_account_near_keyword=use_account,
-                    account_window=50,  # window 고정
+                    account_window=50,  # 고정
                 )
                 st.text_area("마스킹 결과", value=redacted, height=360)
                 st.download_button(
@@ -319,9 +330,8 @@ with right:
                     redacted,
                     file_name="sanitized.txt",
                     mime="text/plain",
+                    use_container_width=True,
                 )
-
-
 
 # ==================================
 # detector.py (검출 전용 JSON 출력)
@@ -557,6 +567,7 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
 
 
