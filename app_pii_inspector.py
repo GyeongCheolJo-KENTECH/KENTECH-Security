@@ -264,10 +264,9 @@ with left:
 
 
 with right:
-    st.subheader()
-    mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
-    submitted = st.form_submit_button("🚀 실행")
     st.subheader("② 결과")
+        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+        run = st.button("🚀 실행")
     if not submitted:
         st.info("왼쪽에서 텍스트와 옵션을 설정한 뒤 **실행** 버튼을 누르세요.")
     else:
@@ -558,6 +557,7 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
 
 
