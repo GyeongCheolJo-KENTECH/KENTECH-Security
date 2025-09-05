@@ -49,6 +49,10 @@ def looks_like_rrn_ymd(num13: str) -> bool:
 # ---------- 패턴들 ----------
 # 휴대폰
 PAT_MOBILE = re.compile(r"\b(01[016789])[-\s]?\d{3,4}[-\s]?\d{4}\b")
+# 유선(서울)
+PAT_LAND_SEOUL = re.compile(r"\b(02)[-\s]?\d{3,4}[-\s]?\d{4}\b")
+# 유선(지방)
+PAT_LAND_OTHERS = re.compile(r"\b(0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4]))[-\s]?\d{3,4}[-\s]?\d{4}\b")
 # 주민등록번호(형식)
 PAT_RRN = re.compile(r"\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-]?\d{7}\b")
 # 이메일
@@ -83,6 +87,11 @@ class Rule:
 def mask_mobile(m: re.Match) -> str:
     tail2 = re.sub(r"\D", "", m.group(0))[-2:]
     return f"TEL[***-****-**{tail2}]"
+
+def mask_landline(m: re.Match) -> str:
+    area = m.group(1)
+    tail2 = re.sub(r"\D", "", m.group(0))[-2:]
+    return f"TEL[{area}-***-**{tail2}]"
 
 def mask_rrn(m: re.Match) -> str:
     raw = m.group(0)
@@ -121,15 +130,17 @@ def mask_project(m: re.Match) -> str:
 
 def default_rules() -> List[Rule]:
     return [
-        Rule("전화번호", PAT_MOBILE, mask_fn=mask_mobile, color="#c8e6c9"),
+        Rule("휴대폰(모바일)", PAT_MOBILE, mask_fn=mask_mobile, color="#c8e6c9"),
+        Rule("유선(서울 02)", PAT_LAND_SEOUL, mask_fn=mask_landline, color="#d0f0fd"),
+        Rule("유선(지방 0xx)", PAT_LAND_OTHERS, mask_fn=mask_landline, color="#e6f7ff"),
         Rule("주민등록번호", PAT_RRN, mask_fn=mask_rrn, color="#ffecb3"),
         Rule("이메일", PAT_EMAIL, mask_fn=mask_email, color="#bbdefb"),
-        Rule("카드번호", PAT_CARD, mask_fn=mask_card, validator=lambda m: luhn_check(m.group(0)), color="#ffcdd2"),
+        Rule("카드번호(룬검증)", PAT_CARD, mask_fn=mask_card, validator=lambda m: luhn_check(m.group(0)), color="#ffcdd2"),
         Rule("여권", PAT_PASSPORT, mask_fn=mask_passport, color="#e1bee7"),
         Rule("운전면허", PAT_DRIVER, mask_fn=mask_driver, color="#d7ccc8"),
-        Rule("사업자등록번호", PAT_BRN, mask_fn=mask_brn, validator=lambda m: brn_check(m.group(0)), color="#fff0b3"),
-        Rule("법인등록번호", PAT_CRN, mask_fn=mask_crn, validator=lambda m: not looks_like_rrn_ymd(m.group(0)), color="#e0f7fa"),
-        Rule("연구과제번호", PAT_PROJECT, mask_fn=mask_project, color="#f0b3ff"),
+        Rule("사업자등록번호(BRN)", PAT_BRN, mask_fn=mask_brn, validator=lambda m: brn_check(m.group(0)), color="#fff0b3"),
+        Rule("법인등록번호(CRN)", PAT_CRN, mask_fn=mask_crn, validator=lambda m: not looks_like_rrn_ymd(m.group(0)), color="#e0f7fa"),
+        Rule("연구과제번호(ProjectID)", PAT_PROJECT, mask_fn=mask_project, color="#f0b3ff"),
     ]
 
 # ---------- 검출/표기 ----------
@@ -226,7 +237,6 @@ def replace_text(text: str, rules: List[Rule], use_account_near_keyword: bool = 
 # ---------- UI ----------
 st.set_page_config(page_title="민감정보 표기·대체 도구", layout="wide")
 st.title("🔒 민감정보 검출 · 표기(하이라이트) · 대체(마스킹)")
-
 left, right = st.columns([1, 1], gap="large")
 
 with left:
@@ -237,30 +247,26 @@ with left:
         "여기에 텍스트를 붙여넣으세요",
         key="user_text",
         height=360,
-        placeholder="""예) 010-1234-5678, 02-345-6789, name@example.com
-220-81-62517(사업자), 110111-1234567(법인), 202300012A(과제)""",
+        placeholder=(
+            "예) 010-1234-5678, 02-345-6789, name@example.com\n"
+            "220-81-62517(사업자), 110111-1234567(법인), 202300012A(과제)"
+        ),
     )
 
-    # 멀티셀렉트 (지방 유선 규칙은 default_rules()에서 제거되어 목록에 없음)
     enabled_names = st.multiselect(
         "적용할 규칙 선택",
         [r.name for r in rules_all],
         default=[r.name for r in rules_all],
     )
 
+    use_account = st.checkbox("계좌(키워드 근접) 포함 (window=50 고정)", value=True)
 
 with right:
     st.subheader("② 결과")
 
-    # 오른쪽 상단 컨트롤 (출력 모드 + 실행 버튼)
-    ctrl_col1, ctrl_col2 = st.columns([3, 1])
-    with ctrl_col1:
-        mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
-    with ctrl_col2:
-        run = st.button("🚀 실행", use_container_width=True)
-
-
-    st.divider()
+    # 출력 모드와 실행 버튼을 오른쪽 위에 배치
+    mode = st.radio("출력 모드", ["표기(하이라이트)", "대체(마스킹)"], horizontal=True)
+    run = st.button("🚀 실행")
 
     if not run:
         st.info("왼쪽에서 텍스트를 입력하고 **실행** 버튼을 누르세요.")
@@ -268,18 +274,15 @@ with right:
         if not base_text.strip():
             st.warning("텍스트를 입력하세요.")
         else:
-            # 선택한 규칙만 적용
             rules = [r for r in rules_all if r.name in enabled_names]
 
-            # window=50 고정 적용
             spans = find_spans(
                 base_text,
                 rules,
                 use_account_near_keyword=use_account,
-                account_window=50,
+                account_window=50,  # 고정
             )
 
-            # 검출 요약
             if spans:
                 counts = {}
                 for sp in spans:
@@ -289,7 +292,6 @@ with right:
             else:
                 st.write("검출된 항목 없음")
 
-            # 결과 출력
             if mode == "표기(하이라이트)":
                 html = annotate_html(base_text, spans, rules)
                 st.markdown(
@@ -303,14 +305,13 @@ with right:
                     html,
                     file_name="annotated.html",
                     mime="text/html",
-                    use_container_width=True,
                 )
             else:
                 redacted = replace_text(
                     base_text,
                     rules,
                     use_account_near_keyword=use_account,
-                    account_window=50,  # 고정
+                    account_window=50,
                 )
                 st.text_area("마스킹 결과", value=redacted, height=360)
                 st.download_button(
@@ -318,8 +319,8 @@ with right:
                     redacted,
                     file_name="sanitized.txt",
                     mime="text/plain",
-                    use_container_width=True,
                 )
+
 
 # ==================================
 # detector.py (검출 전용 JSON 출력)
@@ -356,6 +357,8 @@ if False:
 
     PAT = {
         "mobile_phone": re.compile(r"\b(01[016789])[-\s]?\d{3,4}[-\s]?\d{4}\b"),
+        "landline_seoul": re.compile(r"\b(02)[-\s]?\d{3,4}[-\s]?\d{4}\b"),
+        "landline_others": re.compile(r"\b(0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4]))[-\s]?\d{3,4}[-\s]?\d{4}\b"),
         "rrn": re.compile(r"\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-]?\d{7}\b"),
         "email": re.compile(r"\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b"),
         "card": re.compile(r"\b(?:\d[ -]?){13,19}\b"),
@@ -372,6 +375,8 @@ if False:
 
     RULES = [
         Rule("mobile_phone", PAT["mobile_phone"]),
+        Rule("landline_seoul", PAT["landline_seoul"]),
+        Rule("landline_others", PAT["landline_others"]),
         Rule("rrn", PAT["rrn"]),
         Rule("email", PAT["email"]),
         Rule("card", PAT["card"], validate=lambda m: luhn_check(m.group(0))),
@@ -462,6 +467,8 @@ if False:
 
     # 패턴
     PAT_MOBILE = re.compile(r"\b(01[016789])[-\s]?\d{3,4}[-\s]?\d{4}\b")
+    PAT_LAND_SEOUL = re.compile(r"\b(02)[-\s]?\d{3,4}[-\s]?\d{4}\b")
+    PAT_LAND_OTHERS = re.compile(r"\b(0(?:3[1-3]|4[1-4]|5[1-5]|6[1-4]))[-\s]?\d{3,4}[-\s]?\d{4}\b")
     PAT_RRN = re.compile(r"\b\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])[-]?\d{7}\b")
     PAT_EMAIL = re.compile(r"\b([A-Za-z0-9._%+-]+)@([A-Za-z0-9.-]+\.[A-Za-z]{2,})\b")
     PAT_CARD = re.compile(r"\b(?:\d[ -]?){13,19}\b")
@@ -478,6 +485,9 @@ if False:
     def mask_mobile(m: re.Match) -> str:
         tail2 = re.sub(r"\D", "", m.group(0))[-2:]
         return f"TEL[***-****-**{tail2}]"
+    def mask_landline(m: re.Match) -> str:
+        area = m.group(1); tail2 = re.sub(r"\D", "", m.group(0))[-2:]
+        return f"TEL[{area}-***-**{tail2}]"
     def mask_rrn(m: re.Match) -> str:
         return f"RRN[******-***{m.group(0)[-4:]}]"
     def mask_email(m: re.Match) -> str:
@@ -501,6 +511,8 @@ if False:
 
     RULES = [
         (PAT_MOBILE,  mask_mobile,  None),
+        (PAT_LAND_SEOUL, mask_landline, None),
+        (PAT_LAND_OTHERS, mask_landline, None),
         (PAT_RRN,     mask_rrn,     None),
         (PAT_EMAIL,   mask_email,   None),
         (PAT_CARD,    mask_card,    lambda m: luhn_check(m.group(0))),
@@ -544,13 +556,3 @@ if False:
 
     if __name__ == "__main__":
         main()
-
-
-
-
-
-
-
-
-
-
