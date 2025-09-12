@@ -278,7 +278,7 @@ with right:
             spans = find_spans(
                 base_text,
                 rules,
-                use_account_near_keyword=true,
+                use_account_near_keyword=True,
                 account_window=50,  # 고정
             )
 
@@ -309,7 +309,7 @@ with right:
                 redacted = replace_text(
                     base_text,
                     rules,
-                    use_account_near_keyword=true,
+                    use_account_near_keyword=True,
                     account_window=50,
                 )
                 st.text_area("마스킹 결과", value=redacted, height=360)
@@ -555,4 +555,5 @@ if False:
 
     if __name__ == "__main__":
         main()
+
 
